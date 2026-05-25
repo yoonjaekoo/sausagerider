@@ -453,14 +453,14 @@ function buildTrack() {
     const kerbPos=[], kerbUVs=[], kerbIdx=[];
 
     // Compute curvature at each point for kerbs
-    function getCurvature(t){
+    var getCurvature=function(t){
         const step=0.005;
         const t1=Math.min(t+step,1),t0=Math.max(t-step,0);
         const p1=trackSpline.getPointAt(t1),p0=trackSpline.getPointAt(t0);
         const tan1=trackSpline.getTangentAt(t1),tan0=trackSpline.getTangentAt(t0);
         const dTan=tan1.clone().sub(tan0);
         return dTan.length()/step;
-    }
+    };
 
     for(let i=0;i<=segs;i++){
         const t=i/segs;
@@ -648,6 +648,50 @@ function buildTrack() {
     ground.receiveShadow=true;
     scene.add(ground);
 
+    var createTree=function(x,z,size){
+        var g=new THREE.Group();
+        var trunkMat=new THREE.MeshStandardMaterial({color:0x8B5E3C,roughness:0.9});
+        var trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.4*size,0.6*size,2.5*size,6),trunkMat);
+        trunk.position.y=1.2*size;trunk.castShadow=true;
+        g.add(trunk);
+        var leafMat=new THREE.MeshStandardMaterial({
+            color:new THREE.Color().setHSL(rand(0.25,0.4),0.5,0.3+rand(0,0.1)),roughness:0.9
+        });
+        var crown=new THREE.Mesh(new THREE.SphereGeometry(rand(1.8,3)*size,7,7),leafMat);
+        crown.position.y=rand(3,5)*size;
+        crown.castShadow=true;
+        g.add(crown);
+        g.position.set(x,0,z);
+        g.userData={baseX:x,baseZ:z,phase:rand(0,Math.PI*2),speed:rand(0.5,1.5),amp:rand(0.1,0.25)};
+        scene.add(g);
+        return g;
+    };
+
+    var createLightPole=function(x,z,angleY){
+        var g=new THREE.Group();
+        var poleMat=new THREE.MeshStandardMaterial({color:0x555555,metalness:0.6,roughness:0.3});
+        var pole=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.18,5,6),poleMat);
+        pole.position.y=2.5;pole.castShadow=true;
+        g.add(pole);
+        var arm=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.08,0.08),poleMat);
+        arm.position.set(0.6,5,0);
+        g.add(arm);
+        var lightGeo=new THREE.SphereGeometry(0.2,8,8);
+        var lightMat=new THREE.MeshStandardMaterial({color:0xffdd88,emissive:0xffaa44,emissiveIntensity:0.5});
+        var lightMesh=new THREE.Mesh(lightGeo,lightMat);
+        lightMesh.position.set(1.2,4.9,0);
+        g.add(lightMesh);
+        var glowMatP=new THREE.MeshStandardMaterial({
+            color:0xffaa44,transparent:true,opacity:0.08,emissive:0xffaa44,emissiveIntensity:0.3,side:THREE.DoubleSide
+        });
+        var glow=new THREE.Mesh(new THREE.SphereGeometry(1.2,8,8),glowMatP);
+        glow.position.set(1.2,4.9,0);
+        g.add(glow);
+        g.position.set(x,0,z);
+        g.rotation.y=angleY;
+        scene.add(g);
+    };
+
     // Bushes and rocks along track (visual detail)
     const bushMat=new THREE.MeshStandardMaterial({
         color:new THREE.Color().setHSL(0.28,0.5,0.3),roughness:0.9
@@ -684,25 +728,7 @@ function buildTrack() {
         }
     }
 
-    // Trees with wind animation
-    function createTree(x,z,size){
-        const g=new THREE.Group();
-        const trunkMat=new THREE.MeshStandardMaterial({color:0x8B5E3C,roughness:0.9});
-        const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.4*size,0.6*size,2.5*size,6),trunkMat);
-        trunk.position.y=1.2*size;trunk.castShadow=true;
-        g.add(trunk);
-        const leafMat=new THREE.MeshStandardMaterial({
-            color:new THREE.Color().setHSL(rand(0.25,0.4),0.5,0.3+rand(0,0.1)),roughness:0.9
-        });
-        const crown=new THREE.Mesh(new THREE.SphereGeometry(rand(1.8,3)*size,7,7),leafMat);
-        crown.position.y=rand(3,5)*size;
-        crown.castShadow=true;
-        g.add(crown);
-        g.position.set(x,0,z);
-        g.userData={baseX:x,baseZ:z,phase:rand(0,Math.PI*2),speed:rand(0.5,1.5),amp:rand(0.1,0.25)};
-        scene.add(g);
-        return g;
-    }
+    // Trees
     const treeCount=isMobile?35:80;
     for(let i=0;i<treeCount;i++){
         const angle=rand(0,Math.PI*2);
@@ -711,30 +737,6 @@ function buildTrack() {
     }
 
     // Light poles
-    function createLightPole(x,z,angleY){
-        const g=new THREE.Group();
-        const poleMat=new THREE.MeshStandardMaterial({color:0x555555,metalness:0.6,roughness:0.3});
-        const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.18,5,6),poleMat);
-        pole.position.y=2.5;pole.castShadow=true;
-        g.add(pole);
-        const arm=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.08,0.08),poleMat);
-        arm.position.set(0.6,5,0);
-        g.add(arm);
-        const lightGeo=new THREE.SphereGeometry(0.2,8,8);
-        const lightMat=new THREE.MeshStandardMaterial({color:0xffdd88,emissive:0xffaa44,emissiveIntensity:0.5});
-        const lightMesh=new THREE.Mesh(lightGeo,lightMat);
-        lightMesh.position.set(1.2,4.9,0);
-        g.add(lightMesh);
-        const glowMat=new THREE.MeshStandardMaterial({
-            color:0xffaa44,transparent:true,opacity:0.08,emissive:0xffaa44,emissiveIntensity:0.3,side:THREE.DoubleSide
-        });
-        const glow=new THREE.Mesh(new THREE.SphereGeometry(1.2,8,8),glowMat);
-        glow.position.set(1.2,4.9,0);
-        g.add(glow);
-        g.position.set(x,0,z);
-        g.rotation.y=angleY;
-        scene.add(g);
-    }
     for(let i=0;i<segs;i+=20){
         const t=i/segs;
         const pt=trackSpline.getPointAt(t);
@@ -749,43 +751,32 @@ function buildTrack() {
     }
 
     // Pit building
-    function createPitBuilding(x,z,angle){
+    var createPitBuilding=function(x,z,angle){
         const g=new THREE.Group();
         const wallMat=new THREE.MeshStandardMaterial({color:0x667788,roughness:0.8});
         const roofMat2=new THREE.MeshStandardMaterial({color:0x445566,roughness:0.7});
         const doorMat=new THREE.MeshStandardMaterial({color:0x334455,roughness:0.9});
         const stripeMatP=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.6});
-
-        // Main building
         const main=new THREE.Mesh(new THREE.BoxGeometry(8,2.5,5),wallMat);
         main.position.y=1.8;main.castShadow=true;
         g.add(main);
-
-        // Roof
         const roof2=new THREE.Mesh(new THREE.BoxGeometry(8.4,0.2,5.4),roofMat2);
         roof2.position.y=3.1;
         g.add(roof2);
-
-        // Pit garage doors
         for(let dx=-2;dx<=2;dx+=2){
             const door=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.6,0.05),doorMat);
             door.position.set(dx,1.0,2.52);
             g.add(door);
-            // Red stripe on door
             const stripe=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.08,0.06),stripeMatP);
             stripe.position.set(dx,0.2,2.53);
             g.add(stripe);
         }
-
-        // Windows
         const winMat=new THREE.MeshStandardMaterial({color:0x88ccff,roughness:0.1,metalness:0.8});
         for(let wx=-2;wx<=2;wx+=2){
             const win=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.6,0.05),winMat);
             win.position.set(wx,2.2,2.52);
             g.add(win);
         }
-
-        // Sign
         const signMat=new THREE.MeshStandardMaterial({color:0xff6622,emissive:0xff4400,emissiveIntensity:0.3});
         const sign=new THREE.Mesh(new THREE.BoxGeometry(3,0.6,0.05),signMat);
         sign.position.set(0,3.0,2.52);
@@ -794,21 +785,18 @@ function buildTrack() {
             new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.6}));
         signText.position.set(0,3.0,2.55);
         g.add(signText);
-
-        // Chimney
         const chim=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.8,0.4),roofMat2);
         chim.position.set(2.5,3.5,-1.5);
         g.add(chim);
-
         g.position.set(x,0,z);
         g.rotation.y=angle;
         scene.add(g);
         return g;
-    }
+    };
 
     // Grandstands
-    function createGrandstand(x,z,angle,size){
-        const g=new THREE.Group();
+    var createGrandstand=function(x,z,angle,size){
+        var g=new THREE.Group();
         const standMat=new THREE.MeshStandardMaterial({color:0x667788,roughness:0.8});
         const roofMat=new THREE.MeshStandardMaterial({color:0x445566,roughness:0.7});
         const seats=new THREE.Mesh(new THREE.BoxGeometry(size*4,0.8,size*2),standMat);
@@ -865,7 +853,7 @@ function buildTrack() {
     }
 
     // More structures - small bridges/overpasses
-    function createOverpass(x,z,angle){
+    var createOverpass=function(x,z,angle){
         const g=new THREE.Group();
         const bridgeMat=new THREE.MeshStandardMaterial({color:0x889999,roughness:0.7});
         const roadBed=new THREE.Mesh(new THREE.BoxGeometry(6,0.4,4),bridgeMat);
@@ -882,7 +870,7 @@ function buildTrack() {
         g.position.set(x,0,z);
         g.rotation.y=angle;
         scene.add(g);
-    }
+    };
     // Place overpasses on the track
     for(let i=1;i<segs;i+=80){
         const t=i/segs;
@@ -1911,13 +1899,13 @@ function createTouchControls(){
     `;
     document.body.appendChild(div);
 
-    function addTouch(elId,key){
+    var addTouch=function(elId,key){
         const el=document.getElementById(elId);
         if(!el)return;
         el.addEventListener('touchstart',e=>{e.preventDefault();touch[key]=true;touchStart(key);},{passive:false});
         el.addEventListener('touchend',e=>{e.preventDefault();touch[key]=false;touchEnd(key);},{passive:false});
         el.addEventListener('touchcancel',e=>{touch[key]=false;touchEnd(key);},{passive:false});
-    }
+    };
     addTouch('t-left','left');
     addTouch('t-right','right');
     addTouch('t-up','forward');
@@ -2790,14 +2778,14 @@ function animateNumber(el,target,duration){
     const current=parseFloat(el.textContent)||0;
     const startTime=performance.now();
     const startVal=current;
-    function tick(){
+    var tickFn=function(){
         const t=(performance.now()-startTime)/duration;
         if(t>=1){el.textContent=Math.round(target);return;}
         const eased=1-Math.pow(1-t,3);
         el.textContent=Math.round(startVal+(target-startVal)*eased);
-        requestAnimationFrame(tick);
-    }
-    tick();
+        requestAnimationFrame(tickFn);
+    };
+    tickFn();
 }
 
 // ============================================================
