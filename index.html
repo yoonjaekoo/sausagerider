@@ -211,55 +211,40 @@ function randInt(min,max){return Math.floor(rand(min,max+1))}
 const DEG2RAD = Math.PI / 180;
 
 // ============================================================
-// PROCEDURAL TEXTURES
+// PROCEDURAL TEXTURES (fast init)
 // ============================================================
-function createCanvasTexture(w,h,drawFn){
-    const c=document.createElement('canvas');c.width=w;c.height=h;
-    const ctx=c.getContext('2d');drawFn(ctx,w,h);
+function makeRoadTexture(){
+    // Fast procedural asphalt texture
+    const c=document.createElement('canvas');c.width=256;c.height=256;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle='#3a3a3e';ctx.fillRect(0,0,256,256);
+    const id=ctx.getImageData(0,0,256,256);const d=id.data;
+    for(let i=0;i<d.length;i+=4){
+        const n=(Math.random()*30+40)|0;
+        d[i]=n;d[i+1]=n;d[i+2]=n+3;d[i+3]=255;
+    }
+    ctx.putImageData(id,0,0);
     const tex=new THREE.CanvasTexture(c);
     tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+    tex.anisotropy=2;
     return tex;
 }
 
-function makeRoadTexture(){
-    return createCanvasTexture(512,512,(ctx,w,h)=>{
-        ctx.fillStyle='#3a3a3e';ctx.fillRect(0,0,w,h);
-        for(let i=0;i<12000;i++){
-            const x=rand(0,w),y=rand(0,h),s=rand(0.5,2);
-            const b=rand(40,70);ctx.fillStyle=`rgb(${b},${b},${b+5})`;
-            ctx.fillRect(x,y,s,s*0.3);
-        }
-        for(let i=0;i<60;i++){
-            const x=rand(0,w),y=rand(0,h);
-            ctx.strokeStyle=`rgba(255,255,255,${rand(0.01,0.04)})`;
-            ctx.lineWidth=rand(0.5,1.5);
-            ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+rand(-3,3),y+rand(-3,3));
-            ctx.stroke();
-        }
-    });
-}
-
 function makeGrassTexture(){
-    return createCanvasTexture(256,256,(ctx,w,h)=>{
-        ctx.fillStyle='#4a7c3f';ctx.fillRect(0,0,w,h);
-        for(let i=0;i<3000;i++){
-            const x=rand(0,w),y=rand(0,h);
-            const g=rand(100,160);ctx.fillStyle=`rgb(60,${g},50)`;
-            ctx.fillRect(x,y,rand(0.5,1.5),rand(2,6));
-        }
-    });
-}
-
-function makeGuardrailTexture(){
-    return createCanvasTexture(128,64,(ctx,w,h)=>{
-        ctx.fillStyle='#cccccc';ctx.fillRect(0,0,w,h);
-        ctx.fillStyle='#aaaaaa';
-        for(let i=0;i<w;i+=16){
-            ctx.fillRect(i,0,8,h);
-        }
-        ctx.strokeStyle='#999';ctx.lineWidth=1;
-        ctx.strokeRect(0,0,w-1,h-1);
-    });
+    const c=document.createElement('canvas');c.width=128;c.height=128;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle='#4a7c3f';ctx.fillRect(0,0,128,128);
+    const id=ctx.getImageData(0,0,128,128);const d=id.data;
+    for(let i=0;i<d.length;i+=4){
+        const noise=Math.random()*30-15;
+        d[i]=60+noise;d[i+1]=120+noise;d[i+2]=50+noise;d[i+3]=255;
+    }
+    ctx.putImageData(id,0,0);
+    const tex=new THREE.CanvasTexture(c);
+    tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+    tex.repeat.set(30,30);
+    tex.anisotropy=1;
+    return tex;
 }
 
 // ============================================================
@@ -338,21 +323,22 @@ let clock = new THREE.Clock();
 let screenShake = { intensity: 0, timer: 0 };
 
 function makeSkyTexture(){
-    return createCanvasTexture(1024,512,(ctx,w,h)=>{
-        const grad=ctx.createLinearGradient(0,0,0,h);
-        grad.addColorStop(0,'#1a2a6c');
-        grad.addColorStop(0.3,'#3a6cc9');
-        grad.addColorStop(0.55,'#6db3f2');
-        grad.addColorStop(0.78,'#b5d9f5');
-        grad.addColorStop(0.88,'#d4e6f0');
-        grad.addColorStop(1,'#e8dcc8');
-        ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
-        for(let i=0;i<35;i++){
-            const cx=rand(0,w),cy=rand(0,h*0.5),rx=rand(30,120),ry=rand(8,25);
-            ctx.fillStyle=`rgba(255,255,255,${rand(0.05,0.15)})`;
-            ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.fill();
-        }
-    });
+    const c=document.createElement('canvas');c.width=512;c.height=256;
+    const ctx=c.getContext('2d');
+    const grad=ctx.createLinearGradient(0,0,0,256);
+    grad.addColorStop(0,'#1a2a6c');grad.addColorStop(0.3,'#3a6cc9');
+    grad.addColorStop(0.55,'#6db3f2');grad.addColorStop(0.78,'#b5d9f5');
+    grad.addColorStop(0.88,'#d4e6f0');grad.addColorStop(1,'#e8dcc8');
+    ctx.fillStyle=grad;ctx.fillRect(0,0,512,256);
+    // Fast cloud streaks
+    for(let i=0;i<20;i++){
+        ctx.fillStyle=`rgba(255,255,255,${Math.random()*0.08})`;
+        ctx.beginPath();
+        ctx.ellipse(Math.random()*512,Math.random()*128,Math.random()*60+20,Math.random()*8+4,0,0,Math.PI*2);
+        ctx.fill();
+    }
+    const tex=new THREE.CanvasTexture(c);
+    return tex;
 }
 
 function initScene() {
@@ -582,10 +568,9 @@ function buildTrack() {
         kerbMat.vertexColors=true;
     }
 
-    // Walls
-    const wallTex=makeGuardrailTexture();
+    // Walls (solid color for faster load)
     const wMat=new THREE.MeshStandardMaterial({
-        map:wallTex,color:0xcccccc,roughness:0.5,metalness:0.4,side:THREE.DoubleSide
+        color:0xcccccc,roughness:0.5,metalness:0.4,side:THREE.DoubleSide
     });
     const wallGeo=new THREE.BufferGeometry();
     wallGeo.setAttribute('position',new THREE.Float32BufferAttribute(wallPos,3));
@@ -2899,7 +2884,8 @@ function init(){
 
 window.restartRace=restartRace;
 
-window.addEventListener('load',()=>{setTimeout(init,600)});
+// Start immediately after Three.js loads (no artificial delay)
+if(document.readyState==='complete'){requestAnimationFrame(init)}else{window.addEventListener('load',()=>{requestAnimationFrame(init)})}
 </script>
 </body>
 </html>
