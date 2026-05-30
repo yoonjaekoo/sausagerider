@@ -120,9 +120,9 @@ canvas{display:block}
 
 <div id="loadingScreen">
   <h1>소세지라이더</h1>
-  <div class="subtitle">Made By yoonjaekooo(AI Model : Deepseek V4 Flash)</div>
+  <div class="subtitle">Grand Prix</div>
   <div class="loading-bar-wrap"><div class="loading-bar-fill"></div></div>
-  <p>로딩 중...</p>
+  <p>로딩...</p>
 </div>
 
 <canvas id="speedLinesCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:4;pointer-events:none"></canvas>
@@ -170,6 +170,16 @@ canvas{display:block}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// Fallback: if cdnjs is slow/blocked, try unpkg
+(function(){
+    if(typeof THREE==='undefined'){
+        var s=document.createElement('script');
+        s.src='https://unpkg.com/three@0.128.0/build/three.min.js';
+        document.head.appendChild(s);
+    }
+})();
+</script>
 <script>
 // ============================================================
 // SAUSAGE RIDER GP - Ultra High Quality Edition
@@ -430,11 +440,20 @@ let finishLinePos=new THREE.Vector3(), trackNormal=new THREE.Vector3(), trackRig
 let trackLength=0;
 let boostPadPositions=[];
 
+function getCurvature(t){
+    const step=0.005;
+    const t1=Math.min(t+step,1),t0=Math.max(t-step,0);
+    const p1=trackSpline.getPointAt(t1),p0=trackSpline.getPointAt(t0);
+    const tan1=trackSpline.getTangentAt(t1),tan0=trackSpline.getTangentAt(t0);
+    const dTan=tan1.clone().sub(tan0);
+    return dTan.length()/step;
+}
+
 function buildTrack() {
     const pts = [
         new THREE.Vector3(0,0,-220),
         new THREE.Vector3(150,3,-180),
-        new THREE.Vector3(280,-2,-90),
+        new THREE.Vector3(260,-2,-90),
         new THREE.Vector3(310,5,50),
         new THREE.Vector3(220,-3,180),
         new THREE.Vector3(70,2,220),
@@ -451,9 +470,6 @@ function buildTrack() {
     const roadPos=[], roadUVs=[], roadIdx=[];
     const wallPos=[], wallIdx=[];
     const kerbPos=[], kerbUVs=[], kerbIdx=[];
-
-    // Compute curvature at each point for kerbs
-    var getCurvature=function(t){
         const step=0.005;
         const t1=Math.min(t+step,1),t0=Math.max(t-step,0);
         const p1=trackSpline.getPointAt(t1),p0=trackSpline.getPointAt(t0);
@@ -2872,8 +2888,18 @@ function init(){
 
 window.restartRace=restartRace;
 
-// Start immediately after Three.js loads (no artificial delay)
-if(document.readyState==='complete'){requestAnimationFrame(init)}else{window.addEventListener('load',()=>{requestAnimationFrame(init)})}
+// Reliable init: wait for THREE + DOM, with fallback CDN
+(function waitForThree(){
+    if(typeof THREE!=='undefined'){
+        if(document.readyState==='loading'){
+            window.addEventListener('DOMContentLoaded',()=>requestAnimationFrame(init));
+        }else{
+            requestAnimationFrame(init);
+        }
+    } else {
+        setTimeout(waitForThree,30);
+    }
+})();
 </script>
 </body>
 </html>
